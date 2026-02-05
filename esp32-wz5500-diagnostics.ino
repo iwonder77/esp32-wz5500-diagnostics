@@ -20,7 +20,7 @@
  *      ESP32 GPIO4                 -> RST
  *    - Commands for testing from Mac terminal
  *      1. Ping test:     ping 192.168.50.2
- *      2. UDP test:      echo "hello" | nc -u 192.168.50.2 5000
+ *      2. UDP test:      echo "hello" | nc -u -w1 192.168.50.2 5000
  *
  * (c) Thanksgiving Point Exhibits Electronics Team — 2025
 */
