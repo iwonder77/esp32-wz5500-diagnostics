@@ -111,6 +111,7 @@ void setup() {
       Serial.println("  Continuing anyway - link may come up later");
     }
     delay(500);
+    Serial.print(".");
   }
   Serial.println();
   switch (Ethernet.linkStatus()) {
@@ -196,12 +197,14 @@ void handleUdp() {
     IPAddress senderIP = udp.remoteIP();
     uint16_t senderPort = udp.remotePort();
 
-    // Read packet
+    // Clear udp packet buffer (fill with zeros)
     memset(packetBuffer, 0, BUFFER_SIZE);
+    // Read packet data into packet buffer
     int bytesRead = udp.read(packetBuffer, BUFFER_SIZE - 1);
+    // explicitly null-terminate the string of packet data (so we know exactly where the data ends)
     packetBuffer[bytesRead] = '\0';
 
-    // Trim trailing whitespace/newlines
+    // data clean up, trim trailing whitespace/newlines
     while (bytesRead > 0 && (packetBuffer[bytesRead - 1] == '\n' || packetBuffer[bytesRead - 1] == '\r' || packetBuffer[bytesRead - 1] == ' ')) {
       packetBuffer[--bytesRead] = '\0';
     }
@@ -222,9 +225,11 @@ void handleUdp() {
     Serial.print(packetBuffer);
     Serial.println("\"");
 
-    // Prepare response
+    // prepare response
     String response;
 
+    // create response based on string of packet data read
+    // note: the null terminator is important for strcmp to know where to end the comparison of strings
     if (strcmp(packetBuffer, "PING") == 0 || strcmp(packetBuffer, "ping") == 0) {
       response = "PONG";
     } else if (strcmp(packetBuffer, "STATUS") == 0 || strcmp(packetBuffer, "status") == 0) {
@@ -234,10 +239,12 @@ void handleUdp() {
       response = "ECHO: " + String(packetBuffer);
     }
 
-    // Send response
-    udp.beginPacket(senderIP, senderPort);
-    udp.print(response);
-    udp.endPacket();
+    // send response in 3 steps:
+    udp.beginPacket(senderIP, senderPort);  // address and port to send data to
+    udp.print(response);                    // build data
+    udp.endPacket();                        // send it NOW
+
+    // update
     packetsSent++;
 
     Serial.print("        ║ Sent: \"");
