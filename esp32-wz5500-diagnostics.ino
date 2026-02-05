@@ -49,6 +49,7 @@ bool ethernetInitialized = false;
 bool linkUp = false;
 unsigned long packetsReceived = 0;
 unsigned long packetsSent = 0;
+const unsigned long LINK_TIMEOUT = 10000;
 
 void setup() {
   Serial.begin(115200);
@@ -101,14 +102,18 @@ void setup() {
       ethernetInitialized = false;
   }
 
-  // check IP
-  Serial.print("\nStep 4: IP address: ");
-  Serial.println(Ethernet.localIP());
-
-  // monitor link status
-  Serial.println("\nStep 5: Monitoring link status...");
+  // wait for link to come up
+  Serial.println("\nStep 4: Waiting for ethernet link...");
+  unsigned long startTime = millis();
+  while (Ethernet.linkStatus() != LinkON) {
+    if (millis() - startTime > LINK_TIMEOUT) {
+      Serial.println("  TIMEOUT: link did not come up after 10s timeout");
+      Serial.println("  Continuing anyway - link may come up later");
+    }
+    delay(500);
+  }
+  Serial.println();
   switch (Ethernet.linkStatus()) {
-    delay(1000);
     case Unknown:
       Serial.println("  UNKNOWN");
       linkUp = false;
@@ -121,15 +126,15 @@ void setup() {
       Serial.println("  DOWN");
       linkUp = false;
       break;
+    default:
+      linkUp = false;
+      break;
   }
 
-  if (ethernetInitialized && linkUp) {
-    Serial.println("\nEthernet hardware successfully initialized");
-    Serial.println("Ethernet link UP");
-    Serial.print("Step 6: Starting UDP server, binding to port: ");
-    Serial.println(UDP_PORT);
-    udp.begin(UDP_PORT);
-  }
+  // start UDP server
+  Serial.print("Step 5: Starting UDP server, binding to port: ");
+  Serial.println(UDP_PORT);
+  udp.begin(UDP_PORT);
 }
 
 void loop() {
@@ -206,14 +211,14 @@ void handleUdp() {
     Serial.print("[");
     printTimestamp();
     Serial.println("] ╔═══ UDP PACKET RECEIVED ═══════════════════════════════");
-    Serial.print("         ║ From: ");
+    Serial.print("        ║ From: ");
     Serial.print(senderIP);
     Serial.print(":");
     Serial.println(senderPort);
-    Serial.print("         ║ Size: ");
+    Serial.print("        ║ Size: ");
     Serial.print(bytesRead);
     Serial.println(" bytes");
-    Serial.print("         ║ Data: \"");
+    Serial.print("        ║ Data: \"");
     Serial.print(packetBuffer);
     Serial.println("\"");
 
@@ -235,10 +240,10 @@ void handleUdp() {
     udp.endPacket();
     packetsSent++;
 
-    Serial.print("         ║ Sent: \"");
+    Serial.print("        ║ Sent: \"");
     Serial.print(response);
     Serial.println("\"");
-    Serial.println("         ╚════════════════════════════════════════════════════════");
+    Serial.println("        ╚════════════════════════════════════════════════════════");
     Serial.println();
   }
 }
